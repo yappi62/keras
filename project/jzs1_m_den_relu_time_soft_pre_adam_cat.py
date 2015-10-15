@@ -5,7 +5,7 @@ import random
 
 from functools import reduce
 import re
-from keras.layers.core import Dense, TimeDistributedDense, Dropout, Activation, RepeatVector
+from keras.layers.core import Dense, TimeDistributedDense, Dropout, Activation, RepeatVector, Masking
 from keras.layers.recurrent import LSTM, JZS1
 from keras.models import Sequential
 from keras.preprocessing.sequence import pad_sequences
@@ -16,9 +16,7 @@ from datetime import datetime
 from collections import Counter
 
 
-EACH_LIMIT_SIZE = 10000
-LIMIT_SIZE = 30000
-EMBED_SIZE = 300
+LIMIT_SIZE = 20000
 HIDDEN_SIZE = 512
 BATCH_SIZE = 128
 EPOCHS = 500
@@ -102,32 +100,16 @@ def vectorize(data):
 			break
 	return pad_sequences(rX, maxlen=ques_maxlen), pad_sequences(rY, maxlen=ans_maxlen)
 
-
 print('Enter the quesTypes (\'what color\', \'is this\', ..., \'all\')')
 # quesTypes = input()
 quesTypes = 'is this'
 
 if quesTypes == 'all':
-	annIds = vqa.getQuesIds()
-	tannIds = tvqa.getQuesIds()
+	annIdsA = vqa.getQuesIds()
+	tannIdsA = tvqa.getQuesIds()
 else:
-	annIds = vqa.getQuesIds(quesTypes = quesTypes)
-	tannIds = tvqa.getQuesIds(quesTypes = quesTypes)
-
-annIdsA = annIds[0:EACH_LIMIT_SIZE]
-tannIdsA = tannIds[0:EACH_LIMIT_SIZE]
-
-quesTypes = 'what color'
-annIds = vqa.getQuesIds(quesTypes = quesTypes)
-tannIds = tvqa.getQuesIds(quesTypes = quesTypes)
-annIdsA += annIds[0:EACH_LIMIT_SIZE]
-tannIdsA += tannIds[0:EACH_LIMIT_SIZE]
-
-quesTypes = 'what is'
-annIds = vqa.getQuesIds(quesTypes = quesTypes)
-tannIds = tvqa.getQuesIds(quesTypes = quesTypes)
-annIdsA += annIds[0:EACH_LIMIT_SIZE]
-tannIdsA += tannIds[0:EACH_LIMIT_SIZE]
+	annIdsA = vqa.getQuesIds(quesTypes = quesTypes)
+	tannIdsA = tvqa.getQuesIds(quesTypes = quesTypes)
 
 annsA = vqa.loadQA(annIdsA)
 tannsA = tvqa.loadQA(tannIdsA)
@@ -178,6 +160,7 @@ for i in range(0, len(aY)):
 			count += 1
 	bY.append(code)
 
+
 data = Counter(bY)
 accmode = data.most_common(1).pop(0)[1]/float(len(aX))
 tX = np.zeros((len(taX), ques_maxlen, vocab_size), dtype=np.bool)
@@ -206,6 +189,7 @@ for i in range(0, len(taY)):
 			count += 1
 	tbY.append(code)
 
+
 data = Counter(tbY)
 taccmode = data.most_common(1).pop(0)[1]/float(len(taX))
 
@@ -215,8 +199,8 @@ print('ques_maxlen, ans_maxlen = {}, {}'.format(ques_maxlen, ans_maxlen))
 
 print('Build model ...')
 model = Sequential()
-model.add(Embedding(vocab_size, EMBED_SIZE, mask_zero=True))
-model.add(JZS1(EMBED_SIZE, HIDDEN_SIZE))
+model.add(Masking(mask_value=0))
+model.add(JZS1(vocab_size, HIDDEN_SIZE))
 model.add(Dense(HIDDEN_SIZE, HIDDEN_SIZE, activation="relu"))
 model.add(RepeatVector(ans_maxlen))
 model.add(JZS1(HIDDEN_SIZE, HIDDEN_SIZE, return_sequences=True))
@@ -226,10 +210,10 @@ model.add(TimeDistributedDense(HIDDEN_SIZE, vocab_size, activation="softmax")) #
 model.compile(optimizer='adam', loss='categorical_crossentropy') # mean_squared_error, categorical_crossentropy
 
 print('Training ...')
-fResult = open('jzs1_embed_den_relu_time_soft_pre_adam_cat.txt', 'w')
+fResult = open('jzs1_m_den_relu_time_soft_pre_adam_cat.txt', 'w')
 fResult.write('Question type = %s\n'%(quesTypes))
 fResult.close()
-# model.fit(aX, Y, batch_size=BATCH_SIZE, nb_epoch=EPOCHS, validation_split=0.1, show_accuracy=True)
+# model.fit(X, Y, batch_size=BATCH_SIZE, nb_epoch=EPOCHS, validation_split=0.1, show_accuracy=True)
 
 begin = datetime.now()
 for i in range(0, EPOCHS):
@@ -237,14 +221,15 @@ for i in range(0, EPOCHS):
 	print('-'*40)
 	print('EPOCH', i)
 	print('-'*40)
-	progbar = generic_utils.Progbar(aX.shape[0])
-	for j in range(len(aX)/BATCH_SIZE):
-		fResult = open('jzs1_embed_den_relu_time_soft_pre_adam_cat.txt', 'a+')
-		loss, acc = model.train_on_batch(aX[index:index+BATCH_SIZE], Y[index:index+BATCH_SIZE], accuracy=True)
+	progbar = generic_utils.Progbar(X.shape[0])
+	for j in range(len(X)/BATCH_SIZE):
+		fResult = open('jzs1_m_den_relu_time_soft_pre_adam_cat.txt', 'a+')
+		loss, acc = model.train_on_batch(X[index:index+BATCH_SIZE], Y[index:index+BATCH_SIZE], accuracy=True)
 		progbar.add(BATCH_SIZE, values=[("train loss", loss), ("train acc", acc)])
 		fResult.write('train %d %d %.4f %.4f\n'%(i, j, loss, acc))
 		index += BATCH_SIZE
 		fResult.close()
+
 
 end = datetime.now()
 diff = end - begin
@@ -256,13 +241,13 @@ avgSec -= 60*avgMin
 avgMin -= 60*avgHour
 avgHour -= 24*avgDay
 
-model.save_weights('jzs1_embed_den_relu_time_soft_pre_adam_cat.hdf5', overwrite=True)
+model.save_weights('jzs1_m_den_relu_time_soft_pre_adam_cat.hdf5', overwrite=True)
 
-# loss, acc = model.evaluate(taX, tY, batch_size=BATCH_SIZE, show_accuracy=True)
-progbar = generic_utils.Progbar(taX.shape[0])
+# loss, acc = model.evaluate(tX, tY, batch_size=BATCH_SIZE, show_accuracy=True)
+progbar = generic_utils.Progbar(tX.shape[0])
 index = 0
-for i in range(len(taX)/BATCH_SIZE):
-	loss, acc = model.test_on_batch(taX[index:index+BATCH_SIZE], tY[index:index+BATCH_SIZE], accuracy=True)
+for i in range(len(tX)/BATCH_SIZE):
+	loss, acc = model.test_on_batch(tX[index:index+BATCH_SIZE], tY[index:index+BATCH_SIZE], accuracy=True)
 	progbar.add(BATCH_SIZE, values=[("test loss", loss), ("test acc", acc)])
 	index += BATCH_SIZE
 
@@ -274,7 +259,7 @@ print('Test loss / test accuracy = %.4f / %.4f\n'%(loss, acc))
 print('mode acc / test mode acc = %.4f / %.4f\n'%(accmode, taccmode))
 print('Average learning time = %ddays %d:%d:%d\n\n'%(avgDay, avgHour, avgMin, avgSec))
 
-fResult = open('jzs1_embed_den_relu_time_soft_pre_adam_cat.txt', 'a+')
+fResult = open('jzs1_m_den_relu_time_soft_pre_adam_cat.txt', 'a+')
 fResult.write('Test loss / test accuracy = %.4f / %.4f\n'%(loss, acc))
 fResult.write('mode acc / test mode acc = %.4f / %.4f\n'%(accmode, taccmode))
 fResult.write('Average learning time = %ddays %d:%d:%d\n\n'%(avgDay, avgHour, avgMin, avgSec))
