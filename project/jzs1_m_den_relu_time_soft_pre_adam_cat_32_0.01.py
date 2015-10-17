@@ -7,6 +7,7 @@ from functools import reduce
 import re
 from keras.layers.core import Dense, TimeDistributedDense, Dropout, Activation, RepeatVector, Masking
 from keras.layers.recurrent import LSTM, JZS1
+from keras.optimizers import SGD, RMSprop, Adam
 from keras.models import Sequential
 from keras.preprocessing.sequence import pad_sequences
 from keras.layers.embeddings import Embedding
@@ -19,7 +20,7 @@ from collections import Counter
 EACH_LIMIT_SIZE = 10000
 LIMIT_SIZE = 30000
 HIDDEN_SIZE = 512
-BATCH_SIZE = 128
+BATCH_SIZE = 32
 EPOCHS = 500
 END_MARK = 1
 
@@ -223,10 +224,12 @@ model.add(JZS1(HIDDEN_SIZE, HIDDEN_SIZE, return_sequences=True))
 model.add(TimeDistributedDense(HIDDEN_SIZE, vocab_size, activation="softmax")) # TimeDistributedDense
 # model.add(Activation('softmax')) # time_distributed_softmax
 
-model.compile(optimizer='adam', loss='categorical_crossentropy') # mean_squared_error, categorical_crossentropy
+opt = Adam(lr=0.01)
+
+model.compile(optimizer=opt, loss='categorical_crossentropy') # mean_squared_error, categorical_crossentropy
 
 print('Training ...')
-fResult = open('jzs1_m_den_relu_time_soft_pre_adam_cat.txt', 'w')
+fResult = open('jzs1_m_den_relu_time_soft_pre_adam_cat_32_0.01.txt', 'w')
 fResult.write('Question type = %s\n'%(quesTypes))
 fResult.close()
 # model.fit(X, Y, batch_size=BATCH_SIZE, nb_epoch=EPOCHS, validation_split=0.1, show_accuracy=True)
@@ -239,7 +242,7 @@ for i in range(0, EPOCHS):
 	print('-'*40)
 	progbar = generic_utils.Progbar(X.shape[0])
 	for j in range(len(X)/BATCH_SIZE):
-		fResult = open('jzs1_m_den_relu_time_soft_pre_adam_cat.txt', 'a+')
+		fResult = open('jzs1_m_den_relu_time_soft_pre_adam_cat_32_0.01.txt', 'a+')
 		loss, acc = model.train_on_batch(X[index:index+BATCH_SIZE], Y[index:index+BATCH_SIZE], accuracy=True)
 		progbar.add(BATCH_SIZE, values=[("train loss", loss), ("train acc", acc)])
 		fResult.write('train %d %d %.4f %.4f\n'%(i, j, loss, acc))
@@ -257,7 +260,7 @@ avgSec -= 60*avgMin
 avgMin -= 60*avgHour
 avgHour -= 24*avgDay
 
-model.save_weights('jzs1_m_den_relu_time_soft_pre_adam_cat.hdf5', overwrite=True)
+model.save_weights('jzs1_m_den_relu_time_soft_pre_adam_cat_32_0.01.hdf5', overwrite=True)
 
 # loss, acc = model.evaluate(tX, tY, batch_size=BATCH_SIZE, show_accuracy=True)
 progbar = generic_utils.Progbar(tX.shape[0])
@@ -275,7 +278,7 @@ print('Test loss / test accuracy = %.4f / %.4f\n'%(loss, acc))
 print('mode acc / test mode acc = %.4f / %.4f\n'%(accmode, taccmode))
 print('Average learning time = %ddays %d:%d:%d\n\n'%(avgDay, avgHour, avgMin, avgSec))
 
-fResult = open('jzs1_m_den_relu_time_soft_pre_adam_cat.txt', 'a+')
+fResult = open('jzs1_m_den_relu_time_soft_pre_adam_cat_32_0.01.txt', 'a+')
 fResult.write('Test loss / test accuracy = %.4f / %.4f\n'%(loss, acc))
 fResult.write('mode acc / test mode acc = %.4f / %.4f\n'%(accmode, taccmode))
 fResult.write('Average learning time = %ddays %d:%d:%d\n\n'%(avgDay, avgHour, avgMin, avgSec))
