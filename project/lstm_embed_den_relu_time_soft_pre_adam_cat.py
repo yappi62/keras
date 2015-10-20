@@ -225,17 +225,17 @@ print('ques_maxlen, ans_maxlen = {}, {}'.format(ques_maxlen, ans_maxlen))
 print('Build model ...')
 model = Sequential()
 model.add(Embedding(vocab_size, EMBED_SIZE, mask_zero=True))
-model.add(JZS1(EMBED_SIZE, HIDDEN_SIZE))
+model.add(lstm(EMBED_SIZE, HIDDEN_SIZE))
 model.add(Dense(HIDDEN_SIZE, HIDDEN_SIZE, activation="relu"))
 model.add(RepeatVector(ans_maxlen))
-model.add(JZS1(HIDDEN_SIZE, HIDDEN_SIZE, return_sequences=True))
+model.add(lstm(HIDDEN_SIZE, HIDDEN_SIZE, return_sequences=True))
 model.add(TimeDistributedDense(HIDDEN_SIZE, vocab_size, activation="softmax")) # TimeDistributedDense
 # model.add(Activation('softmax')) # time_distributed_softmax
 
 model.compile(optimizer='adam', loss='categorical_crossentropy') # mean_squared_error, categorical_crossentropy
 
 print('Training ...')
-fResult = open('jzs1_embed_den_relu_time_soft_pre_adam_cat.txt', 'w')
+fResult = open('lstm_embed_den_relu_time_soft_pre_adam_cat.txt', 'w')
 fResult.write('Question type = %s\n'%(quesTypes))
 fResult.write('BatchSize %d\n'%(BATCH_SIZE))
 fResult.write('Epochs %d\n'%(EPOCHS))
@@ -243,13 +243,13 @@ fResult.write('VocabSize %d\n'%(vocab_size))
 fResult.close()
 class LossHistory(Callback):
 	def on_epoch_end(self, epoch, logs={}):
-		fResult = open('jzs1_embed_den_relu_time_soft_pre_adam_cat.txt', 'a+')
+		fResult = open('lstm_embed_den_relu_time_soft_pre_adam_cat.txt', 'a+')
 		loss = logs.get('val_loss')
 		acc = logs.get('val_acc')
 		fResult.write('val %d %.4f %.4f\n'%(epoch, loss, acc))
 		fResult.close()
 	def on_batch_end(self, batch, logs={}):
-		fResult = open('jzs1_embed_den_relu_time_soft_pre_adam_cat.txt', 'a+')
+		fResult = open('lstm_embed_den_relu_time_soft_pre_adam_cat.txt', 'a+')
 		loss = logs.get('loss')
 		acc = logs.get('acc')
 		fResult.write('train %d %.4f %.4f\n'%(batch, loss, acc))
@@ -271,7 +271,7 @@ Sec -= 60*Min
 Min -= 60*Hour
 Hour -= 24*Day
 
-model.save_weights('jzs1_embed_den_relu_time_soft_pre_adam_cat.hdf5', overwrite=True)
+model.save_weights('lstm_embed_den_relu_time_soft_pre_adam_cat.hdf5', overwrite=True)
 
 print('X.shape = {}'.format(X.shape))
 print('Y.shape = {}'.format(Y.shape))
@@ -279,7 +279,7 @@ print('ques_maxlen, ans_maxlen = {}, {}'.format(ques_maxlen, ans_maxlen))
 print('mode acc / test mode acc = %.4f / %.4f\n'%(accmode, taccmode))
 print('Total learning time = %ddays %d:%d:%d\n\n'%(Day, Hour, Min, Sec))
 
-fResult = open('jzs1_embed_den_relu_time_soft_pre_adam_cat.txt', 'a+')
+fResult = open('lstm_embed_den_relu_time_soft_pre_adam_cat.txt', 'a+')
 fResult.write('mode acc / test mode acc = %.4f / %.4f\n'%(accmode, taccmode))
 fResult.write('Total learning time = %ddays %d:%d:%d\n\n'%(Day, Hour, Min, Sec))
 fResult.close()

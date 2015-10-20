@@ -103,7 +103,7 @@ def vectorize(data, size):
 		limit += 1
 		if limit == size :
 			break
-	return pad_sequences(rX, maxlen=ques_maxlen), pad_sequences(rY, maxlen=ans_maxlen)
+	return pad_sequences(rX, maxlen=ques_maxlen), pad_sequences(rY, maxlen=ans_maxlen, padding='post')
 
 
 print('Enter the quesTypes (\'what color\', \'is this\', ..., \'all\')')
@@ -171,18 +171,16 @@ for i in range(0, len(aX)):
 
 
 for i in range(0, len(aY)):
-	start = False
 	code = 0
 	count = 0
 	for j in range(0, ans_maxlen):
-		if start == False:
-			if aY[i, j] != 0:
-				start = True
-		if start == True:
+		if aY[i, j] == 0:
+			bY.append(code)
+			break
+		else:
 			Y[i, j, aY[i, j]] = 1
 			code += (aY[i, j] * (vocab_size ** (count)))
 			count += 1
-	bY.append(code)
 
 
 data = Counter(bY)
@@ -201,18 +199,16 @@ for i in range(0, len(taX)):
 
 
 for i in range(0, len(taY)):
-	start = False
 	code = 0
 	count = 0
 	for j in range(0, ans_maxlen):
-		if start == False:
-			if taY[i, j] != 0:
-				start = True
-		if start == True:
+		if taY[i, j] == 0:
+			tbY.append(code)
+			break
+		else
 			tY[i, j, taY[i, j]] = 1
 			code += (taY[i, j] * (vocab_size ** (count)))
 			count += 1
-	tbY.append(code)
 
 
 data = Counter(tbY)
