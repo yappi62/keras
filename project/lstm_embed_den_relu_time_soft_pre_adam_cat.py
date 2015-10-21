@@ -225,10 +225,10 @@ print('ques_maxlen, ans_maxlen = {}, {}'.format(ques_maxlen, ans_maxlen))
 print('Build model ...')
 model = Sequential()
 model.add(Embedding(vocab_size, EMBED_SIZE, mask_zero=True))
-model.add(lstm(EMBED_SIZE, HIDDEN_SIZE))
+model.add(LSTM(EMBED_SIZE, HIDDEN_SIZE))
 model.add(Dense(HIDDEN_SIZE, HIDDEN_SIZE, activation="relu"))
 model.add(RepeatVector(ans_maxlen))
-model.add(lstm(HIDDEN_SIZE, HIDDEN_SIZE, return_sequences=True))
+model.add(LSTM(HIDDEN_SIZE, HIDDEN_SIZE, return_sequences=True))
 model.add(TimeDistributedDense(HIDDEN_SIZE, vocab_size, activation="softmax")) # TimeDistributedDense
 # model.add(Activation('softmax')) # time_distributed_softmax
 
