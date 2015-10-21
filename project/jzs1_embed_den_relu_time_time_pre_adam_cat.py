@@ -19,6 +19,7 @@ from collections import Counter
 
 
 # EACH_LIMIT_SIZE = 10000
+# VAL_EACH_LIMIT_SIZE = 1000
 LIMIT_SIZE = 10000
 VAL_LIMIT_SIZE = 1000
 EMBED_SIZE = 500
@@ -75,20 +76,28 @@ def tokenize(sent):
 	'''
 	return [x.strip().lower() for x in re.split('(\W+)?', sent) if x.strip()]
 
-def get_inputList(vqa, anns):
+def get_inputList(vqa, anns, size):
 	data = []
+	limit = 0
 	for i in range(0, len(anns)):
 		ques = tokenize(vqa.qqa[anns[i]['question_id']]['question'])
 		ans = tokenize(anns[i]['multiple_choice_answer'])
 		data += (ques + ans)
+		limit += 1
+		if limit == size:
+			break
 	return data
 
-def get_inputVec(vqa, anns):
+def get_inputVec(vqa, anns, size):
 	data = []
+	limit = 0
 	for i in range(0, len(anns)):
 		ques = tokenize(vqa.qqa[anns[i]['question_id']]['question'])
 		ans = tokenize(anns[i]['multiple_choice_answer'])
 		data.append((ques, ans))
+		limit += 1
+		if limit == size:
+			break
 	return data
 
 def vectorize(data, size):
@@ -119,36 +128,36 @@ else:
 
 '''
 annIdsA = annIds[0:EACH_LIMIT_SIZE]
-tannIdsA = tannIds[0:EACH_LIMIT_SIZE]
+tannIdsA = tannIds[0:VAL_EACH_LIMIT_SIZE]
 
-quesTypes = 'what color'
+quesTypes = 'where'
 annIds = vqa.getQuesIds(quesTypes = quesTypes)
 tannIds = tvqa.getQuesIds(quesTypes = quesTypes)
 annIdsA += annIds[0:EACH_LIMIT_SIZE]
-tannIdsA += tannIds[0:EACH_LIMIT_SIZE]
+tannIdsA += tannIds[0:VAL_EACH_LIMIT_SIZE]
 
 quesTypes = 'what is'
 annIds = vqa.getQuesIds(quesTypes = quesTypes)
 tannIds = tvqa.getQuesIds(quesTypes = quesTypes)
 annIdsA += annIds[0:EACH_LIMIT_SIZE]
-tannIdsA += tannIds[0:EACH_LIMIT_SIZE]
+tannIdsA += tannIds[0:VAL_EACH_LIMIT_SIZE]
 '''
 
 annsA = vqa.loadQA(annIdsA)
 tannsA = tvqa.loadQA(tannIdsA)
 	
-train = get_inputList(vqa, annsA)
-test = get_inputList(tvqa, tannsA)
+train = get_inputList(vqa, annsA, LIMIT_SIZE)
+test = get_inputList(tvqa, tannsA, VAL_LIMIT_SIZE)
 vocab = sorted(list(set(train + test)))
 # Reserve 0 for masking via pad_sequences
-vocab_size = len(vocab) + 2
+vocab_size = len(vocab) + 1
 word_idx = dict((c, i + 2) for i, c in enumerate(vocab))
 
-train = get_inputVec(vqa, annsA)
-test = get_inputVec(tvqa, tannsA)
+train = get_inputVec(vqa, annsA, LIMIT_SIZE)
+test = get_inputVec(tvqa, tannsA, VAL_LIMIT_SIZE)
 
 ques_maxlen = max(map(len, (x for x, _ in train + test)))
-ans_maxlen = max(map(len, (x for _, x in train + test)))
+ans_maxlen = max(map(len, (x for _, x in train + test))) + 1 # +1 because of adding END_MARK
 
 # ques_maxlen = 100
 # ans_maxlen = 20
@@ -167,7 +176,7 @@ for i in range(0, len(aX)):
 			if aX[i, j] != 0:
 				start = True
 		if start == True:
-			X[i, j, aX[i, j]] = 1
+			X[i, j, aX[i, j]-1] = 1
 
 
 for i in range(0, len(aY)):
@@ -179,7 +188,7 @@ for i in range(0, len(aY)):
 			if aY[i, j] != 0:
 				start = True
 		if start == True:
-			Y[i, j, aY[i, j]] = 1
+			Y[i, j, aY[i, j]-1] = 1
 			code += (aY[i, j] * (vocab_size ** (count)))
 			count += 1
 	bY.append(code)
@@ -197,7 +206,7 @@ for i in range(0, len(taX)):
 			if taX[i, j] != 0:
 				start = True
 		if start == True:
-			tX[i, j, taX[i, j]] = 1
+			tX[i, j, taX[i, j]-1] = 1
 
 
 for i in range(0, len(taY)):
@@ -209,7 +218,7 @@ for i in range(0, len(taY)):
 			if taY[i, j] != 0:
 				start = True
 		if start == True:
-			tY[i, j, taY[i, j]] = 1
+			tY[i, j, taY[i, j]-1] = 1
 			code += (taY[i, j] * (vocab_size ** (count)))
 			count += 1
 	tbY.append(code)
@@ -224,7 +233,7 @@ print('ques_maxlen, ans_maxlen = {}, {}'.format(ques_maxlen, ans_maxlen))
 
 print('Build model ...')
 model = Sequential()
-model.add(Embedding(vocab_size, EMBED_SIZE, mask_zero=True))
+model.add(Embedding(vocab_size+1, EMBED_SIZE, mask_zero=True))
 model.add(JZS1(EMBED_SIZE, HIDDEN_SIZE))
 model.add(Dense(HIDDEN_SIZE, HIDDEN_SIZE, activation="relu"))
 model.add(RepeatVector(ans_maxlen))
