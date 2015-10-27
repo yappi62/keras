@@ -7,6 +7,7 @@ from functools import reduce
 import re
 from keras.layers.core import Dense, TimeDistributedDense, Dropout, Activation, RepeatVector, Masking
 from keras.layers.recurrent import LSTM, JZS1
+from keras.optimizers import SGD, RMSprop, Adam
 from keras.models import Sequential
 from keras.preprocessing.sequence import pad_sequences
 from keras.layers.embeddings import Embedding
@@ -24,8 +25,8 @@ LIMIT_SIZE = 10000
 VAL_LIMIT_SIZE = 1000
 EMBED_SIZE = 500
 HIDDEN_SIZE = 500
-BATCH_SIZE = 32
-EPOCHS = 300
+BATCH_SIZE = 4
+EPOCHS = 100
 END_MARK = 1
 
 dataDir='../../VQA'
@@ -117,7 +118,7 @@ def vectorize(data, size):
 
 print('Enter the quesTypes (\'what color\', \'is this\', ..., \'all\')')
 # quesTypes = input()
-quesTypes = 'is this'
+quesTypes = 'what color'
 
 if quesTypes == 'all':
 	annIdsA = vqa.getQuesIds()
@@ -241,7 +242,9 @@ model.add(JZS1(HIDDEN_SIZE, HIDDEN_SIZE, return_sequences=True))
 model.add(TimeDistributedDense(HIDDEN_SIZE, vocab_size, activation='softmax')) # TimeDistributedDense
 # model.add(Activation('softmax')) # time_distributed_softmax
 
-model.compile(optimizer='adam', loss='categorical_crossentropy') # mean_squared_error, categorical_crossentropy
+opt = Adam(lr = 0.000125)
+
+model.compile(optimizer=opt, loss='categorical_crossentropy') # mean_squared_error, categorical_crossentropy
 
 print('Training ...')
 fResult = open('jzs1_m_den_relu_time_soft_pre_adam_cat.txt', 'w')
@@ -250,6 +253,13 @@ fResult.write('BatchSize %d\n'%(BATCH_SIZE))
 fResult.write('Epochs %d\n'%(EPOCHS))
 fResult.write('VocabSize %d\n'%(vocab_size))
 fResult.close()
+
+fPredict = open('jzs1_m_den_relu_time_soft_pre_adam_cat_pred.txt', 'w')
+fPredict.write('Question type = %s\n'%(quesTypes))
+fPredict.write('BatchSize %d\n'%(BATCH_SIZE))
+fPredict.write('Epochs %d\n'%(EPOCHS))
+fPredict.write('VocabSize %d\n'%(vocab_size))
+fPredict.close()
 class LossHistory(Callback):
 	def on_epoch_end(self, epoch, logs={}):
 		fResult = open('jzs1_m_den_relu_time_soft_pre_adam_cat.txt', 'a+')
@@ -257,6 +267,44 @@ class LossHistory(Callback):
 		acc = logs.get('val_acc')
 		fResult.write('val %d %.4f %.4f\n'%(epoch, loss, acc))
 		fResult.close()
+		
+		pY = model.predict(tX, batch_size=BATCH_SIZE)
+		for i in range(0, len(pY)):
+			fPredict = open('jzs1_m_den_relu_time_soft_pre_adam_cat_pred.txt', 'a+')
+			fPredict.write('\n%d %d'%(epoch, i))
+			fPredict.close()
+			for j in range(0, ans_maxlen):
+				index = aY[i, j]
+				if index == 1:
+					fPredict = open('jzs1_m_den_relu_time_soft_pre_adam_cat_pred.txt', 'a+')
+					fPredict.write(u' end  / ')
+					fPredict.close()
+					break
+				else:
+					for word, idx in word_idx.iteritems():
+						if idx == index:
+							fPredict = open('jzs1_m_den_relu_time_soft_pre_adam_cat_pred.txt', 'a+')
+							fPredict.write(u' '+word)
+							fPredict.close()
+							break
+			for j in range(0, ans_maxlen):
+				pmax = pY[i, j, 0]
+				index = 0
+				for k in range(1, vocab_size):
+					if(pY[i, j, k] > pmax):
+						pmax = pY[i, j, k]
+						index = k
+				if index == 0:
+					fPredict = open('jzs1_m_den_relu_time_soft_pre_adam_cat_pred.txt', 'a+')
+					fPredict.write(u' end'+'(%.4f)'%(pmax))
+					fPredict.close()
+				for word, idx in word_idx.iteritems():
+					if idx == (index+1):
+						fPredict = open('jzs1_m_den_relu_time_soft_pre_adam_cat_pred.txt', 'a+')
+						fPredict.write(u' '+word+'(%.4f)'%(pmax))
+						fPredict.close()
+						break
+		
 	def on_batch_end(self, batch, logs={}):
 		fResult = open('jzs1_m_den_relu_time_soft_pre_adam_cat.txt', 'a+')
 		loss = logs.get('loss')

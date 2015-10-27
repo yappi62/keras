@@ -15,15 +15,16 @@ for line in f:
 		epoch = float(line.split(' ')[1])
 		break
 
-INIT = 1000
-y = []
+INIT = 10000
+FONT_SIZE = 25
+yloss = []
 vloss = []
 vacc = []
 x = INIT
 xv = []
 for line in f:
 	if 'train' in line:
-		y.append(float(line.split(' ')[2]))
+		yloss.append(float(line.split(' ')[2]))
 		x += 1
 	elif 'val' in line:
 		vloss.append(float(line.split(' ')[2]))
@@ -34,18 +35,23 @@ for line in f:
 f.close()
 x = range(INIT, x)
 
-line_train_loss = plt.plot(x, y, label='train_loss', color='blue')
+plt.figure(1)
+plt.subplot(121)
+line_train_loss = plt.plot(x, yloss, label='train_loss', color='blue')
 line_val_loss = plt.plot(xv, vloss, label='val_loss', linewidth=2, color='red')
+plt.annotate('train={}'.format(yloss[0]), xy=(INIT, yloss[0]), fontsize=FONT_SIZE)
+plt.annotate('train={}'.format(yloss[len(yloss)-1]), xy=(len(yloss)-1, yloss[len(yloss)-1]), fontsize=FONT_SIZE)
+plt.annotate('val={}'.format(vloss[0]), xy=(INIT, vloss[0]), fontsize=FONT_SIZE)
+plt.annotate('val={}'.format(vloss[len(vloss)-1]), xy=(len(yloss)-1, vloss[len(vloss)-1]), fontsize=FONT_SIZE)
+plt.legend(loc='upper right')
+
+plt.subplot(122)
+#line_train_acc = plt.plot(x, vacc, label='train_acc', color='blue')
 line_val_acc = plt.plot(xv, vacc, label='val_acc', linewidth=2, color='green')
-
-plt.annotate('{}'.format(y[0]), xy=(INIT, y[0]), fontsize=15)
-plt.annotate('{}'.format(y[len(y)-1]), xy=(len(y)-1, y[len(y)-1]), fontsize=15)
-plt.annotate('{}'.format(vloss[0]), xy=(INIT, vloss[0]), fontsize=15)
-plt.annotate('{}'.format(vloss[len(vloss)-1]), xy=(len(y)-1, vloss[len(vloss)-1]), fontsize=15)
-plt.annotate('{}'.format(vacc[0]), xy=(INIT, vacc[0]), fontsize=15)
-plt.annotate('{}'.format(vacc[len(vacc)-1]), xy=(len(y)-1, vacc[len(vacc)-1]), fontsize=15)
-
-
+#plt.annotate('train={}'.format(yacc[0]), xy=(INIT, yacc[0]), fontsize=FONT_SIZE)
+#plt.annotate('train={}'.format(yacc[len(yacc)-1]), xy=(len(yacc)-1, yacc[len(yacc)-1]), fontsize=FONT_SIZE)
+plt.annotate('val={}'.format(vacc[0]), xy=(INIT, vacc[0]), fontsize=FONT_SIZE)
+plt.annotate('val={}'.format(vacc[len(vacc)-1]), xy=(len(yloss)-1, vacc[len(vacc)-1]), fontsize=FONT_SIZE)
 plt.legend(loc='upper right')
 
 plt.show()
