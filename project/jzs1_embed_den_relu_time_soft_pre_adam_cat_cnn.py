@@ -70,9 +70,13 @@ quesTypes = 'what color'
 if quesTypes == 'all':
 	annIdsA = vqa.getQuesIds()
 	tannIdsA = tvqa.getQuesIds()
+	imgIdsA = vqa.getImgIds()
+	timgIdsA = tvqa.getImgIds()
 else:
 	annIdsA = vqa.getQuesIds(quesTypes = quesTypes)
 	tannIdsA = tvqa.getQuesIds(quesTypes = quesTypes)
+	imgIdsA = vqa.getImgIds(quesTypes = quesTypes)
+	timgIdsA = tvqa.getImgIds(quesTypes = quesTypes)
 
 annsA = vqa.loadQA(annIdsA)
 tannsA = tvqa.loadQA(tannIdsA)
@@ -94,18 +98,24 @@ ans_maxlen = max(map(len, (x for _, x in train + test))) + 1 # +1 because of add
 
 ##### Build Train/Test matrices for text QA
 
+print('Building Train/Val matrices')
 aX, aY = vectorize(train, LIMIT_SIZE, word_idx, ques_maxlen, ans_maxlen)
 taX, taY = vectorize(test, VAL_LIMIT_SIZE, word_idx, ques_maxlen, ans_maxlen)
 
-X, Y, bY = buildMat(aX, aY, ques_maxlen, ans_maxlen, vocab_size)
+X_text, Y, bY = buildMat_text(aX, aY, ques_maxlen, ans_maxlen, vocab_size)
 data = Counter(bY)
 accmode = data.most_common(1).pop(0)[1]/float(len(aX))
+X_img = buildMat_img(imgIdsA, imgDir, 'train2014')
+X = [X_img, aX]		# Use aX instead of X_text in training
 
-tX, tY, tbY = buildMat(taX, taY, ques_maxlen, ans_maxlen, vocab_size)
+tX_text, tY, tbY = buildMat_text(taX, taY, ques_maxlen, ans_maxlen, vocab_size)
 data = Counter(tbY)
 taccmode = data.most_common(1).pop(0)[1]/float(len(taX))
+tX_img = buildMat_img(timgIdsA, timgDir, 'val2014')
+tX = [tX_img, taX]
 
-print('X.shape = {}'.format(X.shape))
+print('X_text.shape = {}'.format(X_text.shape))
+print('X_img.shape = {}'.format(X_img.shape))
 print('Y.shape = {}'.format(Y.shape))
 print('ques_maxlen, ans_maxlen = {}, {}'.format(ques_maxlen, ans_maxlen))
 
@@ -115,6 +125,10 @@ print('Build model ...')
 
 ### Load VGGNet (CNN)
 vggnet = VGG_16('vgg16_weights.h5')	# download(553MB) site: https://gist.github.com/baraldilorenzo/07d7802847aaad0a35d3 --> weights
+vggnet.layers.pop()	# pop last Dense layer to connect to fc7
+vggnet.layers.pop()	# pop Dropout layer
+vggnet.params.pop()	
+vggnet.params.pop()
 vggnet.add(Dense(4096, HIDDEN_SIZE, activation="relu")) # to match the dimensions of image-question features (in Merge layer)
 
 ### Build Question RNN
@@ -209,7 +223,7 @@ class LossHistory(Callback):
 begin = datetime.now()
 
 history = LossHistory()
-model.fit(aX, Y, batch_size=BATCH_SIZE, nb_epoch=EPOCHS, validation_data=(taX, tY), verbose=1, show_accuracy=True, callbacks=[history])
+model.fit(X, Y, batch_size=BATCH_SIZE, nb_epoch=EPOCHS, validation_data=(tX, tY), verbose=1, show_accuracy=True, callbacks=[history])
 
 end = datetime.now()
 diff = end - begin
@@ -223,9 +237,9 @@ Hour -= 24*Day
 
 model.save_weights('jzs1_embed_den_relu_time_soft_pre_adam_cat.hdf5', overwrite=True)
 
-print('X.shape = {}'.format(X.shape))
-print('Y.shape = {}'.format(Y.shape))
-print('ques_maxlen, ans_maxlen = {}, {}'.format(ques_maxlen, ans_maxlen))
+#print('X.shape = {}'.format(X.shape))
+#print('Y.shape = {}'.format(Y.shape))
+#print('ques_maxlen, ans_maxlen = {}, {}'.format(ques_maxlen, ans_maxlen))
 print('mode acc / test mode acc = %.4f / %.4f\n'%(accmode, taccmode))
 print('Total learning time = %ddays %d:%d:%d\n\n'%(Day, Hour, Min, Sec))
 
