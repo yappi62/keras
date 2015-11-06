@@ -27,11 +27,11 @@ from vgg_16_keras import VGG_16
 ##### Initialize parameters
 
 LIMIT_SIZE = 500
-VAL_LIMIT_SIZE = 100
+VAL_LIMIT_SIZE = 50
 EMBED_SIZE = 500
 HIDDEN_SIZE = 500
 BATCH_SIZE = 4
-EPOCHS = 2
+EPOCHS = 5
 
 dataDir='../../VQA'
 # print('Enter the taskType (\'OpenEnded\', \'MultipleChoice\')')
@@ -176,7 +176,7 @@ fPredict = open('test_pred.txt', 'w')
 for i in range(0, len(pY)):
 	fPredict.write('\n')
 	for j in range(0, ans_maxlen):
-		index = aY[i, j]
+		index = taY[i, j]
 		if index == 1:
 			fPredict.write(u'  / ')
 			break
@@ -199,13 +199,14 @@ for i in range(0, len(pY)):
 			if idx == (index+1):
 				fPredict.write(u' '+word+'(%.4f)'%(pmax))
 				break
+
 fPredict.close()
 
 nacc = 0
 nMask = 0
 for i in range(0, len(pY)):
-	for j in range(0, ans_maxlen):
-		if(wY[i, j, 0] == True & wY[i, min(j+1, ans_maxlen-1), 0]) == True:
+	for j in range(0, ans_maxlen-1):
+		if(twY[i, j, 0] == True & twY[i, j+1, 0] == True):
 			nMask += 1
 			dot = np.dot(ppY[i, j], tY[i, j])
 			if dot == True:

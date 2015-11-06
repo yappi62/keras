@@ -184,7 +184,7 @@ class LossHistory(Callback):
 		for i in range(0, len(pY)):
 			fPredict.write('\n%d %d'%(epoch, i))
 			for j in range(0, ans_maxlen):
-				index = aY[i, j]
+				index = taY[i, j]
 				if index == 1:
 					fPredict.write(u'  / ')
 					break
@@ -212,7 +212,7 @@ class LossHistory(Callback):
 		nMask = 0
 		for i in range(0, len(pY)):
 			for j in range(0, ans_maxlen-1):
-				if(wY[i, j, 0] == True & wY[i, j+1, 0] == True):
+				if(twY[i, j, 0] == True & twY[i, j+1, 0] == True):
 					nMask += 1
 					dot = np.dot(ppY[i, j], tY[i, j])
 					if dot == True:
