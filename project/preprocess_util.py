@@ -43,7 +43,7 @@ def vectorize(data, word_idx, ques_maxlen, ans_maxlen, pad='post'):
 		rY.append(y+[END_MARK])
 	return pad_sequences(rX, maxlen=ques_maxlen), pad_sequences(rY, maxlen=ans_maxlen, padding=pad)
 
-def buildMat_text(aX, aY, ques_maxlen, ans_maxlen, vocab_size):
+def buildMat_text(aX, aY, ques_maxlen, ans_maxlen, vocab_size, post_padding=True):
 	X = np.zeros((len(aX), ques_maxlen, vocab_size), dtype=np.bool)
 	Y = np.zeros((len(aY), ans_maxlen, vocab_size), dtype=np.bool)
 	bY = []

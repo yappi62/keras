@@ -26,7 +26,7 @@ from vgg_16_keras import VGG_16
 
 ##### Initialize parameters
 
-LIMIT_SIZE = 2500
+LIMIT_SIZE = 2000
 VAL_LIMIT_SIZE = 1000
 EMBED_SIZE = 500
 HIDDEN_SIZE = 500
@@ -84,10 +84,11 @@ tannsA = tvqa.loadQA(tannIdsA)
 if len(annsA) > LIMIT_SIZE:
 	annsA[LIMIT_SIZE:] = []
 	imgIdsA[LIMIT_SIZE:] = []
+
 if len(tannsA) > VAL_LIMIT_SIZE:
 	tannsA[VAL_LIMIT_SIZE:] = []
 	timgIdsA[VAL_LIMIT_SIZE:] = []
-	
+
 train = get_inputList(vqa, annsA)
 test = get_inputList(tvqa, tannsA)
 vocab = sorted(list(set(train + test)))
@@ -161,45 +162,36 @@ model.compile(optimizer=opt, loss='categorical_crossentropy') # mean_squared_err
 ##### Training (+logging)
 
 print('Training ...')
-fResult = open('jzs1_embed_den_relu_time_soft_pre_adam_cat.txt', 'w')
+fResult = open('jzs1_embed_den_relu_time_soft_post_adam_cat_cnn.txt', 'w')
 fResult.write('Question type = %s\n'%(quesTypes))
 fResult.write('BatchSize %d\n'%(BATCH_SIZE))
 fResult.write('Epochs %d\n'%(EPOCHS))
 fResult.write('VocabSize %d\n'%(vocab_size))
 fResult.close()
 
-fPredict = open('jzs1_embed_den_relu_time_soft_pre_adam_cat_pred.txt', 'w')
+fPredict = open('jzs1_embed_den_relu_time_soft_post_adam_cat_cnn_pred.txt', 'w')
 fPredict.write('Question type = %s\n'%(quesTypes))
 fPredict.write('BatchSize %d\n'%(BATCH_SIZE))
 fPredict.write('Epochs %d\n'%(EPOCHS))
 fPredict.write('VocabSize %d\n'%(vocab_size))
 fPredict.close()
+
 class LossHistory(Callback):
 	def on_epoch_end(self, epoch, logs={}):
-		fResult = open('jzs1_embed_den_relu_time_soft_pre_adam_cat.txt', 'a+')
-		loss = logs.get('val_loss')
-		acc = logs.get('val_acc')
-		fResult.write('val %d %.4f %.4f\n'%(epoch, loss, acc))
-		fResult.close()
-		
+		fPredict = open('jzs1_embed_den_relu_time_soft_post_adam_cat_cnn_pred.txt', 'a+')
 		pY = model.predict(tX, batch_size=BATCH_SIZE)
+		ppY = np.zeros((len(pY), ans_maxlen, vocab_size), dtype=np.bool)
 		for i in range(0, len(pY)):
-			fPredict = open('jzs1_embed_den_relu_time_soft_pre_adam_cat_pred.txt', 'a+')
 			fPredict.write('\n%d %d'%(epoch, i))
-			fPredict.close()
 			for j in range(0, ans_maxlen):
 				index = aY[i, j]
 				if index == 1:
-					fPredict = open('jzs1_embed_den_relu_time_soft_pre_adam_cat_pred.txt', 'a+')
 					fPredict.write(u'  / ')
-					fPredict.close()
 					break
 				else:
 					for word, idx in word_idx.iteritems():
 						if idx == index:
-							fPredict = open('jzs1_embed_den_relu_time_soft_pre_adam_cat_pred.txt', 'a+')
 							fPredict.write(u' '+word)
-							fPredict.close()
 							break
 			for j in range(0, ans_maxlen):
 				pmax = pY[i, j, 0]
@@ -208,22 +200,35 @@ class LossHistory(Callback):
 					if(pY[i, j, k] > pmax):
 						pmax = pY[i, j, k]
 						index = k
+				ppY[i, j, index] = True
 				if index == 0:
-					fPredict = open('jzs1_embed_den_relu_time_soft_pre_adam_cat_pred.txt', 'a+')
 					fPredict.write(u' end'+'(%.4f)'%(pmax))
-					fPredict.close()
 				for word, idx in word_idx.iteritems():
 					if idx == (index+1):
-						fPredict = open('jzs1_embed_den_relu_time_soft_pre_adam_cat_pred.txt', 'a+')
 						fPredict.write(u' '+word+'(%.4f)'%(pmax))
-						fPredict.close()
 						break
+		fPredict.close()
+		nacc = 0
+		nMask = 0
+		for i in range(0, len(pY)):
+			for j in range(0, ans_maxlen-1):
+				if(wY[i, j, 0] == True & wY[i, j+1, 0] == True):
+					nMask += 1
+					dot = np.dot(ppY[i, j], tY[i, j])
+					if dot == True:
+						nacc += 1
+		
+		acc = float(nacc)/nMask
+		fResult = open('jzs1_embed_den_relu_time_soft_post_adam_cat_cnn.txt', 'a+')
+		loss = logs.get('val_loss')
+		# acc = logs.get('val_acc')
+		fResult.write('val %d %.4f %.4f\n'%(epoch, loss, acc))
+		fResult.close()
 		
 	def on_batch_end(self, batch, logs={}):
-		fResult = open('jzs1_embed_den_relu_time_soft_pre_adam_cat.txt', 'a+')
+		fResult = open('jzs1_embed_den_relu_time_soft_post_adam_cat_cnn.txt', 'a+')
 		loss = logs.get('loss')
-		acc = logs.get('acc')
-		fResult.write('train %d %.4f %.4f\n'%(batch, loss, acc))
+		fResult.write('train %d %.4f\n'%(batch, loss))
 		fResult.close()
 
 
@@ -242,7 +247,7 @@ Sec -= 60*Min
 Min -= 60*Hour
 Hour -= 24*Day
 
-model.save_weights('jzs1_embed_den_relu_time_soft_pre_adam_cat.hdf5', overwrite=True)
+model.save_weights('jzs1_embed_den_relu_time_soft_post_adam_cat_cnn.hdf5', overwrite=True)
 
 #print('X.shape = {}'.format(X.shape))
 #print('Y.shape = {}'.format(Y.shape))
@@ -250,7 +255,7 @@ model.save_weights('jzs1_embed_den_relu_time_soft_pre_adam_cat.hdf5', overwrite=
 print('mode acc / test mode acc = %.4f / %.4f\n'%(accmode, taccmode))
 print('Total learning time = %ddays %d:%d:%d\n\n'%(Day, Hour, Min, Sec))
 
-fResult = open('jzs1_embed_den_relu_time_soft_pre_adam_cat.txt', 'a+')
+fResult = open('jzs1_embed_den_relu_time_soft_post_adam_cat_cnn.txt', 'a+')
 fResult.write('mode acc / test mode acc = %.4f / %.4f\n'%(accmode, taccmode))
 fResult.write('Total learning time = %ddays %d:%d:%d\n\n'%(Day, Hour, Min, Sec))
 fResult.close()
