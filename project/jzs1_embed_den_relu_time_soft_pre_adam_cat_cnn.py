@@ -26,7 +26,7 @@ from vgg_16_keras import VGG_16
 
 ##### Initialize parameters
 
-LIMIT_SIZE = 10000
+LIMIT_SIZE = 2500
 VAL_LIMIT_SIZE = 1000
 EMBED_SIZE = 500
 HIDDEN_SIZE = 500
@@ -80,16 +80,23 @@ else:
 
 annsA = vqa.loadQA(annIdsA)
 tannsA = tvqa.loadQA(tannIdsA)
+
+if len(annsA) > LIMIT_SIZE:
+	annsA[LIMIT_SIZE:] = []
+	imgIdsA[LIMIT_SIZE:] = []
+if len(tannsA) > VAL_LIMIT_SIZE:
+	tannsA[VAL_LIMIT_SIZE:] = []
+	timgIdsA[VAL_LIMIT_SIZE:] = []
 	
-train = get_inputList(vqa, annsA, LIMIT_SIZE)
-test = get_inputList(tvqa, tannsA, VAL_LIMIT_SIZE)
+train = get_inputList(vqa, annsA)
+test = get_inputList(tvqa, tannsA)
 vocab = sorted(list(set(train + test)))
 # Reserve 0 for masking via pad_sequences
 vocab_size = len(vocab) + 1
 word_idx = dict((c, i + 2) for i, c in enumerate(vocab))
 
-train = get_inputVec(vqa, annsA, LIMIT_SIZE)
-test = get_inputVec(tvqa, tannsA, VAL_LIMIT_SIZE)
+train = get_inputVec(vqa, annsA)
+test = get_inputVec(tvqa, tannsA)
 
 ques_maxlen = max(map(len, (x for x, _ in train + test)))
 ans_maxlen = max(map(len, (x for _, x in train + test))) + 1 # +1 because of adding END_MARK
@@ -99,16 +106,16 @@ ans_maxlen = max(map(len, (x for _, x in train + test))) + 1 # +1 because of add
 ##### Build Train/Test matrices for text QA
 
 print('Building Train/Val matrices')
-aX, aY = vectorize(train, LIMIT_SIZE, word_idx, ques_maxlen, ans_maxlen)
-taX, taY = vectorize(test, VAL_LIMIT_SIZE, word_idx, ques_maxlen, ans_maxlen)
+aX, aY = vectorize(train, word_idx, ques_maxlen, ans_maxlen)
+taX, taY = vectorize(test, word_idx, ques_maxlen, ans_maxlen)
 
-X_text, Y, bY = buildMat_text(aX, aY, ques_maxlen, ans_maxlen, vocab_size)
+X_text, Y, bY, wY= buildMat_text(aX, aY, ques_maxlen, ans_maxlen, vocab_size)
 data = Counter(bY)
 accmode = data.most_common(1).pop(0)[1]/float(len(aX))
 X_img = buildMat_img(imgIdsA, imgDir, 'train2014')
 X = [X_img, aX]		# Use aX instead of X_text in training
 
-tX_text, tY, tbY = buildMat_text(taX, taY, ques_maxlen, ans_maxlen, vocab_size)
+tX_text, tY, tbY, twY = buildMat_text(taX, taY, ques_maxlen, ans_maxlen, vocab_size)
 data = Counter(tbY)
 taccmode = data.most_common(1).pop(0)[1]/float(len(taX))
 tX_img = buildMat_img(timgIdsA, timgDir, 'val2014')
@@ -175,7 +182,7 @@ class LossHistory(Callback):
 		fResult.write('val %d %.4f %.4f\n'%(epoch, loss, acc))
 		fResult.close()
 		
-		pY = model.predict(taX, batch_size=BATCH_SIZE)
+		pY = model.predict(tX, batch_size=BATCH_SIZE)
 		for i in range(0, len(pY)):
 			fPredict = open('jzs1_embed_den_relu_time_soft_pre_adam_cat_pred.txt', 'a+')
 			fPredict.write('\n%d %d'%(epoch, i))
@@ -223,7 +230,7 @@ class LossHistory(Callback):
 begin = datetime.now()
 
 history = LossHistory()
-model.fit(X, Y, batch_size=BATCH_SIZE, nb_epoch=EPOCHS, validation_data=(tX, tY), verbose=1, show_accuracy=True, callbacks=[history])
+model.fit(X, Y, batch_size=BATCH_SIZE, nb_epoch=EPOCHS, validation_data=(tX, tY, twY), verbose=1, show_accuracy=True, callbacks=[history], sample_weight=wY)
 
 end = datetime.now()
 diff = end - begin

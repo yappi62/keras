@@ -17,48 +17,37 @@ def tokenize(sent):
 	'''
 	return [x.strip().lower() for x in re.split('(\W+)?', sent) if x.strip()]
 
-def get_inputList(vqa, anns, size):
+def get_inputList(vqa, anns):
 	data = []
-	limit = 0
 	for i in range(0, len(anns)):
 		ques = tokenize(vqa.qqa[anns[i]['question_id']]['question'])
 		ans = tokenize(anns[i]['multiple_choice_answer'])
 		data += (ques + ans)
-		limit += 1
-		if limit == size:
-			break
 	return data
 
-def get_inputVec(vqa, anns, size):
+def get_inputVec(vqa, anns):
 	data = []
-	limit = 0
 	for i in range(0, len(anns)):
 		ques = tokenize(vqa.qqa[anns[i]['question_id']]['question'])
 		ans = tokenize(anns[i]['multiple_choice_answer'])
 		data.append((ques, ans))
-		limit += 1
-		if limit == size:
-			break
 	return data
 
-def vectorize(data, size, word_idx, ques_maxlen, ans_maxlen):
+def vectorize(data, word_idx, ques_maxlen, ans_maxlen):
 	rX = []
 	rY = []
-	limit = 0
 	for ques, ans in data:
 		x = [word_idx[w] for w in ques]
 		y = [word_idx[w] for w in ans]
 		rX.append(x)
 		rY.append(y+[END_MARK])
-		limit += 1
-		if limit == size :
-			break
 	return pad_sequences(rX, maxlen=ques_maxlen), pad_sequences(rY, maxlen=ans_maxlen)
 
 def buildMat_text(aX, aY, ques_maxlen, ans_maxlen, vocab_size):
 	X = np.zeros((len(aX), ques_maxlen, vocab_size), dtype=np.bool)
 	Y = np.zeros((len(aY), ans_maxlen, vocab_size), dtype=np.bool)
 	bY = []
+	wY = np.zeros((len(aY), ans_maxlen, 1), dtype=np.bool)
 	for i in range(0, len(aX)):
 		start = False
 		for j in range(0, ques_maxlen):
@@ -73,6 +62,8 @@ def buildMat_text(aX, aY, ques_maxlen, ans_maxlen, vocab_size):
 		code = 0
 		count = 0
 		for j in range(0, ans_maxlen):
+			if aY[i,j] != 0:
+				wY[i,j,0] = True
 			if start == False:
 				if aY[i, j] != 0:
 					start = True
@@ -81,7 +72,7 @@ def buildMat_text(aX, aY, ques_maxlen, ans_maxlen, vocab_size):
 				code += (aY[i, j] * (vocab_size ** (count)))
 				count += 1
 		bY.append(code)
-	return X, Y, bY
+	return X, Y, bY, wY
 
 def buildMat_img(imgIds, imgDir, dataType):
 	X = np.zeros(shape=(len(imgIds),3,224,224))
