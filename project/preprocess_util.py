@@ -86,7 +86,7 @@ def buildMat_text(aX, aY, ques_maxlen, ans_maxlen, vocab_size):
 					code += (aY[i, j] * (vocab_size ** (count)))
 					count += 1
 			bY.append(code)
-
+	
 	for i in range(0, len(aY)):
 		start = False
 		code = 0
