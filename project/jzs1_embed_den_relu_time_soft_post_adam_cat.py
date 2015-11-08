@@ -65,7 +65,7 @@ what time 	who 		what sport 	what animal 	what brand
 
 print('Enter the quesTypes (\'what color\', \'is this\', ..., \'all\')')
 # quesTypes = input()
-quesTypes = 'what color'
+quesTypes = 'what is'
 
 if quesTypes == 'all':
 	annIdsA = vqa.getQuesIds()

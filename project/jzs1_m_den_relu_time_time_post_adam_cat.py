@@ -155,8 +155,8 @@ model.add(JZS1(HIDDEN_SIZE, HIDDEN_SIZE, return_sequences=True))
 model.add(TimeDistributedDense(HIDDEN_SIZE, vocab_size, activation="time_distributed_softmax")) # TimeDistributedDense, time_distributed_softmax
 
 print('Model compiling ...')
-#opt = Adam(lr = 0.000125)
-model.compile(optimizer='adam', loss='categorical_crossentropy') # mean_squared_error, categorical_crossentropy
+opt = Adam(lr = 0.000125)
+model.compile(optimizer=opt, loss='categorical_crossentropy') # mean_squared_error, categorical_crossentropy
 
 
 
