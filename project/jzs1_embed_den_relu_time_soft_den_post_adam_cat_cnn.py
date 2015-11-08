@@ -148,13 +148,64 @@ model.add(TimeDistributedDense(HIDDEN_SIZE, vocab_size, activation="softmax")) #
 print('Model compiling ...')
 opt = Adam(lr = 0.000125)
 model.compile(optimizer=opt, loss='categorical_crossentropy') # mean_squared_error, categorical_crossentropy
-valLoss = 0.0
 
 class LossHistory(Callback):
+	def on_batch_end(self, batch, logs={}):
+		fResult = open('jzs1_embed_den_relu_time_soft_den_post_adam_cat_cnn.txt', 'a+')
+		loss = logs.get('loss')
+		fResult.write('train %d %.4f\n'%(batch, loss))
+		fResult.close()
+
+
+class LossAccHistory(Callback):
 	def on_epoch_end(self, epoch, logs={}):
-		valLoss = logs.get('val_loss')
+		fPredict = open('jzs1_embed_den_relu_time_soft_den_post_adam_cat_cnn_pred.txt', 'a+')
+		pY = model.predict(taX, batch_size=BATCH_SIZE)
+		ppY = np.zeros((len(pY), ans_maxlen, vocab_size), dtype=np.bool)
+		for i in range(0, len(pY)):
+			fPredict.write('\n%d %d'%(iEpoch, i))
+			for j in range(0, ans_maxlen):
+				index = taY[i, j]
+				if index == 1:
+					fPredict.write(u'  / ')
+					break
+				else:
+					for word, idx in word_idx.iteritems():
+						if idx == index:
+							fPredict.write(u' '+word)
+							break
+			for j in range(0, ans_maxlen):
+				pmax = pY[i, j, 0]
+				index = 0
+				for k in range(1, vocab_size):
+					if(pY[i, j, k] > pmax):
+						pmax = pY[i, j, k]
+						index = k
+				ppY[i, j, index] = True
+				if index == 0:
+					fPredict.write(u' end'+'(%.4f)'%(pmax))
+				for word, idx in word_idx.iteritems():
+					if idx == (index+1):
+						fPredict.write(u' '+word+'(%.4f)'%(pmax))
+						break
+		fPredict.close()
+		nacc = 0
+		nMask = 0
+		for i in range(0, len(pY)):
+			for j in range(0, ans_maxlen-1):
+				if(twY[i, j, 0] == True & twY[i, j+1, 0] == True):
+					nMask += 1
+					dot = np.dot(ppY[i, j], tY[i, j])
+					if dot == True:
+						nacc += 1
+		
+		acc = float(nacc)/nMask
+		fResult = open('jzs1_embed_den_relu_time_soft_den_post_adam_cat_cnn.txt', 'a+')
+		loss = logs.get('val_loss')
 		# acc = logs.get('val_acc')
-	
+		fResult.write('val %d %.4f %.4f\n'%(iEpoch, loss, acc))
+		fResult.close()
+		
 	def on_batch_end(self, batch, logs={}):
 		fResult = open('jzs1_embed_den_relu_time_soft_den_post_adam_cat_cnn.txt', 'a+')
 		loss = logs.get('loss')
@@ -163,6 +214,7 @@ class LossHistory(Callback):
 
 
 history = LossHistory()
+acchistory = LossAccHistory()
 
 ##### Build Test matrices for text QA
 print('Building Test matrices')
@@ -175,6 +227,7 @@ tX = [tX_img, taX]
 
 begin = datetime.now()
 numIter = len(annsA)/LIMIT_SIZE
+iEpoch = 0
 for i in range(EPOCHS):
 	for j in range(numIter):		
 		##### Build Train matrices for text QA
@@ -196,53 +249,8 @@ for i in range(EPOCHS):
 		if j != (numIter-1):
 			model.fit(X, Y, batch_size=BATCH_SIZE, nb_epoch=1, verbose=1, show_accuracy=True, callbacks=[history], sample_weight=wY)
 		else:
-			model.fit(X, Y, batch_size=BATCH_SIZE, nb_epoch=1, validation_data=(tX, tY, twY), verbose=1, show_accuracy=True, callbacks=[history], sample_weight=wY)
-	
-	fPredict = open('jzs1_embed_den_relu_time_soft_den_post_adam_cat_cnn_pred.txt', 'a+')
-	pY = model.predict(tX, batch_size=BATCH_SIZE)
-	ppY = np.zeros((len(pY), ans_maxlen, vocab_size), dtype=np.bool)
-	for l in range(0, len(pY)):
-		fPredict.write('\n%d %d'%(i, l))
-		for j in range(0, ans_maxlen):
-			index = taY[l, j]
-			if index == 1:
-				fPredict.write(u'  / ')
-				break
-			else:
-				for word, idx in word_idx.iteritems():
-					if idx == index:
-						fPredict.write(u' '+word)
-						break
-		for j in range(0, ans_maxlen):
-			pmax = pY[l, j, 0]
-			index = 0
-			for k in range(1, vocab_size):
-				if(pY[l, j, k] > pmax):
-					pmax = pY[l, j, k]
-					index = k
-			ppY[l, j, index] = True
-			if index == 0:
-				fPredict.write(u' end'+'(%.4f)'%(pmax))
-			for word, idx in word_idx.iteritems():
-				if idx == (index+1):
-					fPredict.write(u' '+word+'(%.4f)'%(pmax))
-					break
-	fPredict.close()
-	nacc = 0
-	nMask = 0
-	for i in range(0, len(pY)):
-		for j in range(0, ans_maxlen-1):
-			if(twY[i, j, 0] == True & twY[i, j+1, 0] == True):
-				nMask += 1
-				dot = np.dot(ppY[i, j], tY[i, j])
-				if dot == True:
-					nacc += 1
-	
-	acc = float(nacc)/nMask
-	fResult = open('jzs1_embed_den_relu_time_soft_den_post_adam_cat_cnn.txt', 'a+')
-	fResult.write('val %d %.4f %.4f\n'%(i, valLoss, acc))
-	fResult.close()
-
+			model.fit(X, Y, batch_size=BATCH_SIZE, nb_epoch=1, validation_data=(tX, tY, twY), verbose=1, show_accuracy=True, callbacks=[acchistory], sample_weight=wY)
+	iEpoch += 1
 
 end = datetime.now()
 diff = end - begin
