@@ -160,7 +160,7 @@ class LossHistory(Callback):
 class LossAccHistory(Callback):
 	def on_epoch_end(self, epoch, logs={}):
 		fPredict = open('jzs1_embed_den_relu_time_soft_post_adam_cat_cnn_pred.txt', 'a+')
-		pY = model.predict(taX, batch_size=BATCH_SIZE)
+		pY = model.predict(tX, batch_size=BATCH_SIZE)
 		ppY = np.zeros((len(pY), ans_maxlen, vocab_size), dtype=np.bool)
 		for i in range(0, len(pY)):
 			fPredict.write('\n%d %d'%(iEpoch, i))
