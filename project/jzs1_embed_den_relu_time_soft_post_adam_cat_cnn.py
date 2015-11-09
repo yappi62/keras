@@ -227,7 +227,7 @@ tX = [tX_img, taX]
 
 begin = datetime.now()
 numIter = len(annsA)/LIMIT_SIZE
-iEopch = 0
+iEpoch = 0
 for i in range(EPOCHS):
 	for j in range(numIter):		
 		##### Build Train matrices for text QA
@@ -250,7 +250,7 @@ for i in range(EPOCHS):
 			model.fit(X, Y, batch_size=BATCH_SIZE, nb_epoch=1, verbose=1, show_accuracy=True, callbacks=[history], sample_weight=wY)
 		else:
 			model.fit(X, Y, batch_size=BATCH_SIZE, nb_epoch=1, validation_data=(tX, tY, twY), verbose=1, show_accuracy=True, callbacks=[acchistory], sample_weight=wY)
-	iEopch += 1
+	iEpoch += 1
 
 end = datetime.now()
 diff = end - begin
