@@ -112,3 +112,9 @@ def buildMat_img(imgIds, imgDir, dataType):
 		img = img.transpose((2,0,1))
 		X[i] = np.expand_dims(img, axis=0 )
 	return X
+
+def buildMat_feat(imgIds, vggFeats, id_map):
+	X = np.zeros(shape=(len(imgIds), vggFeats.shape[0]))
+	for i in xrange(len(imgIds)):
+		X[i] = vggFeats[:,id_map[str(imgIds[i])]]
+	return X
