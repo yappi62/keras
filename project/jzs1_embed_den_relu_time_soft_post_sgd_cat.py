@@ -155,7 +155,7 @@ model.add(JZS1(HIDDEN_SIZE, HIDDEN_SIZE, return_sequences=True))
 model.add(TimeDistributedDense(HIDDEN_SIZE, vocab_size, activation="softmax")) # TimeDistributedDense
 
 print('Model compiling ...')
-opt = RMSprop(lr = 0.000125)
+opt = SGD(lr = 0.00125)
 model.compile(optimizer=opt, loss='categorical_crossentropy') # mean_squared_error, categorical_crossentropy
 
 
@@ -164,14 +164,14 @@ model.compile(optimizer=opt, loss='categorical_crossentropy') # mean_squared_err
 ##### Training (+logging)
 
 print('Training ...')
-fResult = open('jzs1_embed_den_relu_time_soft_post_rmsprop_cat.txt', 'w')
+fResult = open('jzs1_embed_den_relu_time_soft_post_sgd_cat.txt', 'w')
 fResult.write('Question type = %s\n'%(quesTypes))
 fResult.write('BatchSize %d\n'%(BATCH_SIZE))
 fResult.write('Epochs %d\n'%(EPOCHS))
 fResult.write('VocabSize %d\n'%(vocab_size))
 fResult.close()
 
-fPredict = open('jzs1_embed_den_relu_time_soft_post_rmsprop_cat_pred.txt', 'w')
+fPredict = open('jzs1_embed_den_relu_time_soft_post_sgd_cat_pred.txt', 'w')
 fPredict.write('Question type = %s\n'%(quesTypes))
 fPredict.write('BatchSize %d\n'%(BATCH_SIZE))
 fPredict.write('Epochs %d\n'%(EPOCHS))
@@ -179,7 +179,7 @@ fPredict.write('VocabSize %d\n'%(vocab_size))
 fPredict.close()
 class LossHistory(Callback):
 	def on_epoch_end(self, epoch, logs={}):
-		fPredict = open('jzs1_embed_den_relu_time_soft_post_rmsprop_cat_pred.txt', 'a+')
+		fPredict = open('jzs1_embed_den_relu_time_soft_post_sgd_cat_pred.txt', 'a+')
 		pY = model.predict(taX, batch_size=BATCH_SIZE)
 		ppY = np.zeros((len(pY), ans_maxlen, vocab_size), dtype=np.bool)
 		for i in range(0, len(pY)):
@@ -220,14 +220,14 @@ class LossHistory(Callback):
 						nacc += 1
 		
 		acc = float(nacc)/nMask
-		fResult = open('jzs1_embed_den_relu_time_soft_post_rmsprop_cat.txt', 'a+')
+		fResult = open('jzs1_embed_den_relu_time_soft_post_sgd_cat.txt', 'a+')
 		loss = logs.get('val_loss')
 		# acc = logs.get('val_acc')
 		fResult.write('val %d %.4f %.4f\n'%(epoch, loss, acc))
 		fResult.close()
 		
 	def on_batch_end(self, batch, logs={}):
-		fResult = open('jzs1_embed_den_relu_time_soft_post_rmsprop_cat.txt', 'a+')
+		fResult = open('jzs1_embed_den_relu_time_soft_post_sgd_cat.txt', 'a+')
 		loss = logs.get('loss')
 		fResult.write('train %d %.4f\n'%(batch, loss))
 		fResult.close()
@@ -248,7 +248,7 @@ Sec -= 60*Min
 Min -= 60*Hour
 Hour -= 24*Day
 
-model.save_weights('jzs1_embed_den_relu_time_soft_post_rmsprop_cat.hdf5', overwrite=True)
+model.save_weights('jzs1_embed_den_relu_time_soft_post_sgd_cat.hdf5', overwrite=True)
 
 #print('X.shape = {}'.format(X.shape))
 #print('Y.shape = {}'.format(Y.shape))
@@ -256,7 +256,7 @@ model.save_weights('jzs1_embed_den_relu_time_soft_post_rmsprop_cat.hdf5', overwr
 print('mode acc / test mode acc = %.4f / %.4f\n'%(accmode, taccmode))
 print('Total learning time = %ddays %d:%d:%d\n\n'%(Day, Hour, Min, Sec))
 
-fResult = open('jzs1_embed_den_relu_time_soft_post_rmsprop_cat.txt', 'a+')
+fResult = open('jzs1_embed_den_relu_time_soft_post_sgd_cat.txt', 'a+')
 fResult.write('mode acc / test mode acc = %.4f / %.4f\n'%(accmode, taccmode))
 fResult.write('Total learning time = %ddays %d:%d:%d\n\n'%(Day, Hour, Min, Sec))
 fResult.close()

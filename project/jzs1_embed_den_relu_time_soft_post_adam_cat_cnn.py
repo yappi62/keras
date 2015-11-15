@@ -26,14 +26,14 @@ from vgg_16_keras import VGG_16
 
 ##### Initialize parameters
 
-LIMIT_ITER = 10
-LIMIT_SIZE = 1000
+LIMIT_ITER = 5
+LIMIT_SIZE = 2000
 TR_LIMIT_SIZE = LIMIT_ITER*LIMIT_SIZE
 VAL_LIMIT_SIZE = 1000
 EMBED_SIZE = 500
 HIDDEN_SIZE = 500
-BATCH_SIZE = 4
-EPOCHS = 100
+BATCH_SIZE = 8
+EPOCHS = 200
 
 
 dataDir='../../VQA'
@@ -146,8 +146,8 @@ model.add(JZS1(2*HIDDEN_SIZE, HIDDEN_SIZE, return_sequences=True))
 model.add(TimeDistributedDense(HIDDEN_SIZE, vocab_size, activation="softmax")) # TimeDistributedDense
 
 print('Model compiling ...')
-opt = Adam(lr = 0.000125)
-model.compile(optimizer=opt, loss='categorical_crossentropy') # mean_squared_error, categorical_crossentropy
+#opt = Adam(lr = 0.000125)
+model.compile(optimizer='adam', loss='categorical_crossentropy') # mean_squared_error, categorical_crossentropy
 
 class LossHistory(Callback):
 	def on_batch_end(self, batch, logs={}):
@@ -160,7 +160,7 @@ class LossHistory(Callback):
 class LossAccHistory(Callback):
 	def on_epoch_end(self, epoch, logs={}):
 		fPredict = open('jzs1_embed_den_relu_time_soft_post_adam_cat_cnn_pred.txt', 'a+')
-		pY = model.predict(tX, batch_size=BATCH_SIZE)
+		pY = model.predict([tX_img, taX], batch_size=BATCH_SIZE)
 		ppY = np.zeros((len(pY), ans_maxlen, vocab_size), dtype=np.bool)
 		for i in range(0, len(pY)):
 			fPredict.write('\n%d %d'%(iEpoch, i))
@@ -223,7 +223,7 @@ tX_text, tY, tbY, twY = buildMat_text(taX, taY, ques_maxlen, ans_maxlen, vocab_s
 #data = Counter(tbY)
 #taccmode = data.most_common(1).pop(0)[1]/float(len(taX))
 tX_img = buildMat_img(timgIdsA, timgDir, 'val2014')
-tX = [tX_img, taX]
+#tX = [tX_img, taX]
 
 begin = datetime.now()
 numIter = len(annsA)/LIMIT_SIZE
@@ -237,7 +237,7 @@ for i in range(EPOCHS):
 		#data = Counter(bY)
 		#accmode = data.most_common(1).pop(0)[1]/float(len(aX))
 		X_img = buildMat_img(imgIdsA[j*LIMIT_SIZE:(j+1)*LIMIT_SIZE], imgDir, 'train2014')
-		X = [X_img, aX]		# Use aX instead of X_text in training
+		#X = [X_img, aX]		# Use aX instead of X_text in training
 		
 		print('X_text.shape = {}'.format(X_text.shape))
 		print('X_img.shape = {}'.format(X_img.shape))
@@ -247,9 +247,9 @@ for i in range(EPOCHS):
 		##### Training (+logging)
 		print('Training ...')
 		if j != (numIter-1):
-			model.fit(X, Y, batch_size=BATCH_SIZE, nb_epoch=1, verbose=1, show_accuracy=True, callbacks=[history], sample_weight=wY)
+			model.fit([X_img, aX], Y, batch_size=BATCH_SIZE, nb_epoch=1, verbose=1, show_accuracy=True, callbacks=[history], sample_weight=wY)
 		else:
-			model.fit(X, Y, batch_size=BATCH_SIZE, nb_epoch=1, validation_data=(tX, tY, twY), verbose=1, show_accuracy=True, callbacks=[acchistory], sample_weight=wY)
+			model.fit([X_img, aX], Y, batch_size=BATCH_SIZE, nb_epoch=1, validation_data=([tX_img, taX], tY, twY), verbose=1, show_accuracy=True, callbacks=[acchistory], sample_weight=wY)
 	iEpoch += 1
 
 end = datetime.now()
